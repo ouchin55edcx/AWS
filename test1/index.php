@@ -15,8 +15,8 @@
     <div id="question-container" class="max-w-md mx-auto mt-8 p-6 bg-white border rounded shadow-lg">
         <h1 id="theme" class="text-lg text-blue-500 mb-2"></h1>
         <h1 id="question" class="text-xl font-bold mb-4"></h1>
-        <ul id="choices" class="list-none p-0">
-        </ul>
+        <p id="question-id" class="text-gray-700 font-bold mb-4"></p>
+        <ul id="choices" class="list-none p-0"></ul>
         <p id="quiz-progress" class="mt-4 text-gray-700 font-bold">Question <span id="current-question">1</span>/<span id="total-questions">5</span></p>
         <p id="time-remaining" class="text-red-500 font-bold">Time Remaining: <span id="countdown">15</span> seconds</p>
         <button id="next-button" class="mt-4 px-4 py-2 bg-green-500 text-white rounded cursor-pointer hover:bg-green-600">
@@ -26,6 +26,16 @@
             Show Result
         </button>
         <p id="quiz-finished-message" class="hidden mt-4 text-green-500 font-bold">Quiz Finished!</p>
+        <p id="result-message" class="hidden mt-4 text-red-500 font-bold"></p>
+        <!-- Add a new element to display the score -->
+        <div class="mt-4 p-4 border rounded">
+            <p class="text-gray-700 font-bold">Your Score: <span id="user-score">0</span> points</p>
+        </div>
+        <!-- Add this element to your HTML body -->
+        <div id="user-answers" class="mt-4 p-4 border rounded">
+            <p class="text-gray-700 font-bold">Your Answers:</p>
+        </div>
+        <a href="logout.php">logout</a>
     </div>
 
     <script>
@@ -34,6 +44,7 @@
             let totalQuestions = 5;
             let countdown = 15;
             let timer;
+            let score = 0; // Variable to track the user's score
 
             function startCountdown() {
                 timer = setInterval(function () {
@@ -65,6 +76,7 @@
             function displayQuestion(questionData) {
                 document.getElementById('theme').textContent = questionData.question_theme;
                 document.getElementById('question').textContent = questionData.question_content;
+                document.getElementById('question-id').textContent = `Question ID: ${questionData.question_id}`;
 
                 let choicesList = document.getElementById('choices');
                 choicesList.innerHTML = '';
@@ -76,7 +88,7 @@
                     checkbox.value = choice.choice_id;
                     checkbox.className = 'mr-2';
                     li.appendChild(checkbox);
-                    li.appendChild(document.createTextNode(choice.choice_content));
+                    li.appendChild(document.createTextNode(`(${choice.choice_id}) ${choice.choice_content}`)); // Display choice ID
                     choicesList.appendChild(li);
                 });
 
@@ -98,7 +110,85 @@
                 }
             }
 
+            function displayUserAnswers(userAnswers) {
+                let userAnswersContainer = document.getElementById('user-answers');
+                userAnswersContainer.innerHTML = '';
+
+                for (let questionId in userAnswers) {
+                    let answerItem = document.createElement('p');
+                    answerItem.textContent = `Question ${questionId}: ${userAnswers[questionId].join(', ')}`;
+                    userAnswersContainer.appendChild(answerItem);
+                }
+            }
+
+            function showResult() {
+                // Send a GET request to get_user_answers.php
+                let xhr = new XMLHttpRequest();
+                xhr.open('GET', 'get_user_answers.php', true);
+
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        let userAnswers = JSON.parse(xhr.responseText);
+                        displayResult(userAnswers);
+                        displayUserAnswers(userAnswers); // Add this line
+                    } else if (xhr.readyState === 4 && xhr.status !== 200) {
+                        console.log('Error fetching user answers');
+                    }
+                };
+
+                xhr.send();
+            }
+
+            // Add this function to your script
+
+            function displayResult(userAnswers) {
+                // Customize this based on your actual correct answers
+                let correctAnswers = {
+                    '1': ['A'],
+                    '2': ['B', 'C'],
+                    // Add more as needed
+                };
+
+                let resultContainer = document.getElementById('result-message');
+                resultContainer.innerHTML = '';
+
+                for (let questionId in correctAnswers) {
+                    let userChoice = userAnswers[questionId];
+                    let correctChoice = correctAnswers[questionId];
+
+                    let resultItem = document.createElement('p');
+                    resultItem.textContent = `Question ${questionId}: `;
+
+                    if (arraysEqual(userChoice, correctChoice)) {
+                        resultItem.textContent += 'Correct';
+                        score += 20; // Add 20 points for each correct answer
+                    } else {
+                        resultItem.textContent += 'Incorrect';
+                    }
+
+                    resultContainer.appendChild(resultItem);
+                }
+
+                // Display the total score
+                let totalScoreItem = document.createElement('p');
+                totalScoreItem.textContent = `Total Score: ${score} points`;
+                resultContainer.appendChild(totalScoreItem);
+
+                // Display the score to the user
+                let userScoreContainer = document.getElementById('user-score');
+                userScoreContainer.textContent = `${score} points`;
+            }
+
+            function arraysEqual(arr1, arr2) {
+                if (arr1.length !== arr2.length) return false;
+                for (let i = 0; i < arr1.length; i++) {
+                    if (arr1[i] !== arr2[i]) return false;
+                }
+                return true;
+            }
+
             document.getElementById('next-button').addEventListener('click', nextQuestion);
+            document.getElementById('show-result-button').addEventListener('click', showResult);
 
             fetchNextQuestion();
         });

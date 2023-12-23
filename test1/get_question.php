@@ -64,6 +64,9 @@ while ($rowChoices = $resultChoices->fetch_assoc()) {
     );
 }
 
+// Save the current question ID in the session
+$_SESSION['current_question_id'] = $question['question_id'];
+
 // Close the database connection
 $conn->close();
 
