@@ -39,7 +39,7 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             let currentQuestion = 1;
             let totalQuestions = 5;
             let countdown = 15;
@@ -47,7 +47,7 @@
             let score = 0; // Variable to track the user's score
 
             function startCountdown() {
-                timer = setInterval(function () {
+                timer = setInterval(function() {
                     document.getElementById('countdown').textContent = countdown;
                     countdown--;
 
@@ -61,7 +61,7 @@
             function fetchNextQuestion() {
                 let xhr = new XMLHttpRequest();
                 xhr.open('GET', 'get_question.php', true);
-                xhr.onreadystatechange = function () {
+                xhr.onreadystatechange = function() {
                     if (xhr.readyState === 4 && xhr.status === 200) {
                         let questionData = JSON.parse(xhr.responseText);
                         displayQuestion(questionData);
@@ -81,7 +81,7 @@
                 let choicesList = document.getElementById('choices');
                 choicesList.innerHTML = '';
 
-                questionData.choices.forEach(function (choice) {
+                questionData.choices.forEach(function(choice) {
                     let li = document.createElement('li');
                     let checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
@@ -96,9 +96,20 @@
                 document.getElementById('total-questions').textContent = totalQuestions;
             }
 
+
+
             function nextQuestion() {
                 clearInterval(timer);
                 countdown = 15;
+
+                // Get the selected choices
+                let selectedChoices = [];
+                document.querySelectorAll('input[type="checkbox"]:checked').forEach(function(checkbox) {
+                    selectedChoices.push(checkbox.value);
+                });
+
+                // Save the selected choices in session (you may need to adjust this based on your backend implementation)
+                saveSelectedChoicesInSession(currentQuestion, selectedChoices);
 
                 if (currentQuestion < totalQuestions) {
                     fetchNextQuestion();
@@ -108,6 +119,51 @@
                     document.getElementById('quiz-finished-message').classList.remove('hidden');
                     document.getElementById('show-result-button').classList.remove('hidden');
                 }
+            }
+
+            function saveSelectedChoicesInSession(questionId, selectedChoices) {
+                // Use AJAX to send data to the server
+                let xhr = new XMLHttpRequest();
+                xhr.open('POST', 'save_user_answers.php', true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        // Optional: Handle the response from the server
+                        console.log('User answers saved successfully');
+                    } else if (xhr.readyState === 4 && xhr.status !== 200) {
+                        console.log('Error saving user answers');
+                    }
+                };
+
+                // Convert data to JSON format
+                let data = JSON.stringify({
+                    questionId: questionId,
+                    selectedChoices: selectedChoices
+                });
+
+                // Send the data to the server
+                xhr.send(data);
+            }
+
+
+
+
+            function showResult() {
+                // Send a GET request to get_user_answers.php
+                let xhr = new XMLHttpRequest();
+                xhr.open('GET', 'get_user_answers.php', true);
+
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        let userAnswers = JSON.parse(xhr.responseText);
+                        displayUserAnswers(userAnswers);
+                    } else if (xhr.readyState === 4 && xhr.status !== 200) {
+                        console.log('Error fetching user answers');
+                    }
+                };
+
+                xhr.send();
             }
 
             function displayUserAnswers(userAnswers) {
@@ -121,71 +177,7 @@
                 }
             }
 
-            function showResult() {
-                // Send a GET request to get_user_answers.php
-                let xhr = new XMLHttpRequest();
-                xhr.open('GET', 'get_user_answers.php', true);
 
-                xhr.onreadystatechange = function () {
-                    if (xhr.readyState === 4 && xhr.status === 200) {
-                        let userAnswers = JSON.parse(xhr.responseText);
-                        displayResult(userAnswers);
-                        displayUserAnswers(userAnswers); // Add this line
-                    } else if (xhr.readyState === 4 && xhr.status !== 200) {
-                        console.log('Error fetching user answers');
-                    }
-                };
-
-                xhr.send();
-            }
-
-            // Add this function to your script
-
-            function displayResult(userAnswers) {
-                // Customize this based on your actual correct answers
-                let correctAnswers = {
-                    '1': ['A'],
-                    '2': ['B', 'C'],
-                    // Add more as needed
-                };
-
-                let resultContainer = document.getElementById('result-message');
-                resultContainer.innerHTML = '';
-
-                for (let questionId in correctAnswers) {
-                    let userChoice = userAnswers[questionId];
-                    let correctChoice = correctAnswers[questionId];
-
-                    let resultItem = document.createElement('p');
-                    resultItem.textContent = `Question ${questionId}: `;
-
-                    if (arraysEqual(userChoice, correctChoice)) {
-                        resultItem.textContent += 'Correct';
-                        score += 20; // Add 20 points for each correct answer
-                    } else {
-                        resultItem.textContent += 'Incorrect';
-                    }
-
-                    resultContainer.appendChild(resultItem);
-                }
-
-                // Display the total score
-                let totalScoreItem = document.createElement('p');
-                totalScoreItem.textContent = `Total Score: ${score} points`;
-                resultContainer.appendChild(totalScoreItem);
-
-                // Display the score to the user
-                let userScoreContainer = document.getElementById('user-score');
-                userScoreContainer.textContent = `${score} points`;
-            }
-
-            function arraysEqual(arr1, arr2) {
-                if (arr1.length !== arr2.length) return false;
-                for (let i = 0; i < arr1.length; i++) {
-                    if (arr1[i] !== arr2[i]) return false;
-                }
-                return true;
-            }
 
             document.getElementById('next-button').addEventListener('click', nextQuestion);
             document.getElementById('show-result-button').addEventListener('click', showResult);
