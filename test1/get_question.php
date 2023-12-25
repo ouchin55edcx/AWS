@@ -34,41 +34,42 @@ if (empty($_SESSION['displayed_questions'])) {
 }
 
 // Fetch a random question that has not been displayed
-$randomQuestionId = array_pop($_SESSION['displayed_questions']);
-$query = "SELECT q.id, q.content, t.name AS theme_name 
+if (!empty($_SESSION['displayed_questions'])) {
+    $randomQuestionId = array_pop($_SESSION['displayed_questions']);
+    $query = "SELECT q.id, q.content, t.name AS theme_name 
           FROM question q
           JOIN theme t ON q.theme_id = t.id
           WHERE q.id = $randomQuestionId";
 
-$result = $conn->query($query);
+    $result = $conn->query($query);
 
-$question = array();
+    $question = array();
 
-while ($row = $result->fetch_assoc()) {
-    $question['question_id'] = $row['id'];
-    $question['question_content'] = $row['content'];
-    $question['question_theme'] = $row['theme_name'];
+    while ($row = $result->fetch_assoc()) {
+        $question['question_id'] = $row['id'];
+        $question['question_content'] = $row['content'];
+        $question['question_theme'] = $row['theme_name'];
+    }
+
+    // Fetch choices for the selected question
+    $queryChoices = "SELECT id AS choice_id, choice_content FROM choice WHERE question_id = " . $question['question_id'];
+
+    $resultChoices = $conn->query($queryChoices);
+
+    $question['choices'] = array();
+
+    while ($rowChoices = $resultChoices->fetch_assoc()) {
+        $question['choices'][] = array(
+            'choice_id' => $rowChoices['choice_id'],
+            'choice_content' => $rowChoices['choice_content']
+        );
+    }
+
+    // Save the current question ID in the session
+    $_SESSION['current_question_id'] = $question['question_id'];
+
+    // Close the database connection
+    $conn->close();
+
+    echo json_encode($question);
 }
-
-// Fetch choices for the selected question
-$queryChoices = "SELECT id AS choice_id, choice_content FROM choice WHERE question_id = " . $question['question_id'];
-
-$resultChoices = $conn->query($queryChoices);
-
-$question['choices'] = array();
-
-while ($rowChoices = $resultChoices->fetch_assoc()) {
-    $question['choices'][] = array(
-        'choice_id' => $rowChoices['choice_id'],
-        'choice_content' => $rowChoices['choice_content']
-    );
-}
-
-// Save the current question ID in the session
-$_SESSION['current_question_id'] = $question['question_id'];
-
-// Close the database connection
-$conn->close();
-
-echo json_encode($question);
-?>
